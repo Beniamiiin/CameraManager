@@ -8,6 +8,7 @@
 
 import UIKit
 import CameraManager
+import AVFoundation
 
 class ViewController: UIViewController {
     
@@ -68,13 +69,16 @@ class ViewController: UIViewController {
     // MARK: - ViewController
     fileprivate func addCameraToView()
     {
-        cameraManager.addPreviewLayerToView(cameraView, newCameraOutputMode: CameraOutputMode.videoWithMic)
+        cameraManager.addPreviewLayerToView(cameraView, newCameraOutputMode: CameraOutputMode.stillImageWithFaceDetection)
         cameraManager.showErrorBlock = { [weak self] (erTitle: String, erMessage: String) -> Void in
         
             let alertController = UIAlertController(title: erTitle, message: erMessage, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: { (alertAction) -> Void in  }))
             
             self?.present(alertController, animated: true, completion: nil)
+        }
+        cameraManager.faceDetectionBlock = { [weak self] (faceObject: AVMetadataFaceObject, metadataObject: AVMetadataObject) -> Void in
+            AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
         }
     }
 
@@ -95,7 +99,7 @@ class ViewController: UIViewController {
     @IBAction func recordButtonTapped(_ sender: UIButton) {
         
         switch (cameraManager.cameraOutputMode) {
-        case .stillImage:
+        case .stillImage, .stillImageWithFaceDetection:
             cameraManager.capturePictureWithCompletion({ (image, error) -> Void in
                 if error != nil {
                     self.cameraManager.showErrorBlock("Error occurred", "Cannot save picture.")
@@ -129,7 +133,7 @@ class ViewController: UIViewController {
         
         cameraManager.cameraOutputMode = cameraManager.cameraOutputMode == CameraOutputMode.videoWithMic ? CameraOutputMode.stillImage : CameraOutputMode.videoWithMic
         switch (cameraManager.cameraOutputMode) {
-        case .stillImage:
+        case .stillImage, .stillImageWithFaceDetection:
             cameraButton.isSelected = false
             cameraButton.backgroundColor = UIColor.green
             sender.setTitle("Image", for: UIControlState())

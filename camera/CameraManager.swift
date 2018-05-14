@@ -28,7 +28,7 @@ public enum CameraFlashMode: Int {
 }
 
 public enum CameraOutputMode {
-    case stillImage, videoWithMic, videoOnly
+    case stillImage, stillImageWithFaceDetection, videoWithMic, videoOnly
 }
 
 public enum CameraOutputQuality: Int {
@@ -59,6 +59,8 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             topController.present(alertController, animated: true, completion:nil)
         }
     }
+    
+    open var faceDetectionBlock: ((_ faceObject: AVMetadataFaceObject, _ metadataObject: AVMetadataObject) -> Void)?
     
     /// Property to determine if manager should write the resources to the phone library. Default value is true.
     open var writeFilesToPhoneLibrary = true
@@ -213,6 +215,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     }()
     
     fileprivate var stillImageOutput: AVCaptureStillImageOutput?
+    fileprivate var stillImageWithFaceDetectionOutput: AVCaptureMetadataOutput?
     fileprivate var movieOutput: AVCaptureMovieFileOutput?
     fileprivate var previewLayer: AVCaptureVideoPreviewLayer?
     fileprivate var library: PHPhotoLibrary?
@@ -827,7 +830,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         var currentConnection: AVCaptureConnection?
 
         switch cameraOutputMode {
-        case .stillImage:
+        case .stillImage, .stillImageWithFaceDetection:
             currentConnection = stillImageOutput?.connection(with: AVMediaType.video)
         case .videoOnly, .videoWithMic:
             currentConnection = _getMovieOutput().connection(with: AVMediaType.video)
@@ -978,7 +981,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         if let cameraOutputToRemove = oldCameraOutputMode {
             // remove current setting
             switch cameraOutputToRemove {
-            case .stillImage:
+            case .stillImage, .stillImageWithFaceDetection:
                 if let validStillImageOutput = stillImageOutput {
                     captureSession?.removeOutput(validStillImageOutput)
                 }
@@ -994,14 +997,18 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         
         // configure new devices
         switch newCameraOutputMode {
-        case .stillImage:
-            if (stillImageOutput == nil) {
+        case .stillImage, .stillImageWithFaceDetection:
+            if (stillImageOutput == nil || stillImageWithFaceDetectionOutput == nil) {
                 _setupOutputs()
             }
-            if let validStillImageOutput = stillImageOutput,
-                let captureSession = captureSession,
-                captureSession.canAddOutput(validStillImageOutput) {
-                    captureSession.addOutput(validStillImageOutput)
+            if let captureSession = captureSession {
+                if let validOutput = stillImageOutput, captureSession.canAddOutput(validOutput) {
+                    captureSession.addOutput(validOutput)
+                }
+                
+                if let validOutput = stillImageWithFaceDetectionOutput, captureSession.canAddOutput(validOutput) {
+                    captureSession.addOutput(validOutput)
+                }
             }
         case .videoOnly, .videoWithMic:
             let videoMovieOutput = _getMovieOutput()
@@ -1023,6 +1030,11 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     fileprivate func _setupOutputs() {
         if stillImageOutput == nil {
             stillImageOutput = AVCaptureStillImageOutput()
+        }
+        if cameraOutputMode == .stillImageWithFaceDetection && stillImageWithFaceDetectionOutput == nil {
+            stillImageWithFaceDetectionOutput = AVCaptureMetadataOutput()
+            stillImageWithFaceDetectionOutput?.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+            stillImageWithFaceDetectionOutput?.metadataObjectTypes = [.face]
         }
         if movieOutput == nil {
             movieOutput = AVCaptureMovieFileOutput()
@@ -1339,6 +1351,17 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     }
 }
 
+extension CameraManager: AVCaptureMetadataOutputObjectsDelegate {
+    public func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard let metadataObject = metadataObjects.first else { return }
+        guard let faceObject = metadataObject as? AVMetadataFaceObject else { return }
+        guard let previewLayer = previewLayer else { return }
+        guard let metaDataObject = previewLayer.transformedMetadataObject(for: faceObject) else { return }
+        guard let faceDetectionBlock = faceDetectionBlock else { return }
+        
+        faceDetectionBlock(faceObject, metaDataObject)
+    }
+}
 
 fileprivate extension AVCaptureDevice {
     fileprivate static var videoDevices: [AVCaptureDevice] {
