@@ -355,6 +355,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             self.backCameraDevice = nil
             self.mic = nil
             self.stillImageOutput = nil
+            self.stillImageWithFaceDetectionOutput = nil
             self.movieOutput = nil
             self.animateCameraDeviceChange = oldAnimationValue
         })
@@ -440,7 +441,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             return
         }
         
-        guard cameraOutputMode == .stillImage else {
+        guard cameraOutputMode == .stillImage || cameraOutputMode == .stillImageWithFaceDetection else {
             _show(NSLocalizedString("Capture session output mode video", comment:""), message: NSLocalizedString("I can't take any picture", comment:""))
             return
         }
