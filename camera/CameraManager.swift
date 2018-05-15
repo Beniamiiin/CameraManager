@@ -1008,6 +1008,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 
                 if let validOutput = stillImageWithFaceDetectionOutput, captureSession.canAddOutput(validOutput) {
                     captureSession.addOutput(validOutput)
+                    stillImageWithFaceDetectionOutput?.metadataObjectTypes = [.face]
                 }
             }
         case .videoOnly, .videoWithMic:
@@ -1034,7 +1035,6 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         if cameraOutputMode == .stillImageWithFaceDetection && stillImageWithFaceDetectionOutput == nil {
             stillImageWithFaceDetectionOutput = AVCaptureMetadataOutput()
             stillImageWithFaceDetectionOutput?.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
-            stillImageWithFaceDetectionOutput?.metadataObjectTypes = [.face]
         }
         if movieOutput == nil {
             movieOutput = AVCaptureMovieFileOutput()
