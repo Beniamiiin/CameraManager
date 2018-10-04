@@ -9,6 +9,7 @@
 import UIKit
 import CameraManager
 import AVFoundation
+import CoreLocation
 
 class ViewController: UIViewController {
     
@@ -17,40 +18,78 @@ class ViewController: UIViewController {
     let cameraManager = CameraManager()
     
     // MARK: - @IBOutlets
-
+    @IBOutlet weak var headerView: UIView!
+    @IBOutlet weak var flashModeImageView: UIImageView!
+    @IBOutlet weak var outputImageView: UIImageView!
+    @IBOutlet weak var cameraTypeImageView: UIImageView!
+    @IBOutlet weak var qualityLabel: UILabel!
+    
     @IBOutlet weak var cameraView: UIView!
-    
-    @IBOutlet weak var cameraButton: UIButton!
-    @IBOutlet weak var flashModeButton: UIButton!
-    
-    @IBOutlet weak var askForPermissionsButton: UIButton!
     @IBOutlet weak var askForPermissionsLabel: UILabel!
+    
+    @IBOutlet weak var footerView: UIView!
+    @IBOutlet weak var cameraButton: UIButton!
+    @IBOutlet weak var locationButton: UIButton!
+    
+    let darkBlue = UIColor(red: 4/255, green: 14/255, blue: 26/255, alpha: 1)
+    let lightBlue = UIColor(red: 24/255, green: 125/255, blue: 251/255, alpha: 1)
+    let redColor = UIColor(red: 229/255, green: 77/255, blue: 67/255, alpha: 1)
     
     // MARK: - UIViewController
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        cameraManager.shouldEnableExposure = true
         
-        cameraManager.shouldFlipFrontCameraImage = true
+        cameraManager.shouldFlipFrontCameraImage = false
         cameraManager.showAccessPermissionPopupAutomatically = false
         navigationController?.navigationBar.isHidden = true
         
-        askForPermissionsButton.isHidden = true
         askForPermissionsLabel.isHidden = true
+        askForPermissionsLabel.backgroundColor = lightBlue
+        askForPermissionsLabel.textColor = .white
+        askForPermissionsLabel.isUserInteractionEnabled = true
+        let tapGesture = UITapGestureRecognizer.init(target: self, action: #selector(askForCameraPermissions))
+        askForPermissionsLabel.addGestureRecognizer(tapGesture)
+        
+        footerView.backgroundColor = darkBlue
+        headerView.backgroundColor = darkBlue
+        
+        if CLLocationManager.locationServicesEnabled() {
+            switch CLLocationManager.authorizationStatus() {
+            case .authorizedAlways, .authorizedWhenInUse:
+                self.cameraManager.shouldUseLocationServices = true
+                self.locationButton.isHidden = true
+            default:
+                self.cameraManager.shouldUseLocationServices = false
+            }
+        }
 
         let currentCameraState = cameraManager.currentCameraStatus()
         
         if currentCameraState == .notDetermined {
-            askForPermissionsButton.isHidden = false
             askForPermissionsLabel.isHidden = false
         } else if currentCameraState == .ready {
             addCameraToView()
         }
 
-        if !cameraManager.hasFlash {
-            flashModeButton.isEnabled = false
-            flashModeButton.setTitle("No flash", for: UIControlState())
+        flashModeImageView.image = UIImage(named: "flash_off")
+        if cameraManager.hasFlash {
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(changeFlashMode))
+            flashModeImageView.addGestureRecognizer(tapGesture)
         }
+        
+        outputImageView.image = UIImage(named: "output_video")
+        let outputGesture = UITapGestureRecognizer(target: self, action: #selector(outputModeButtonTapped))
+        outputImageView.addGestureRecognizer(outputGesture)
+        
+        cameraTypeImageView.image = UIImage(named: "switch_camera")
+        let cameraTypeGesture = UITapGestureRecognizer(target: self, action: #selector(changeCameraDevice))
+        cameraTypeImageView.addGestureRecognizer(cameraTypeGesture)
+    
+        qualityLabel.isUserInteractionEnabled = true
+        let qualityGesture = UITapGestureRecognizer(target: self, action: #selector(changeCameraQuality))
+        qualityLabel.addGestureRecognizer(qualityGesture)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -65,7 +104,7 @@ class ViewController: UIViewController {
         cameraManager.stopCaptureSession()
     }
     
-    
+
     // MARK: - ViewController
     fileprivate func addCameraToView()
     {
@@ -84,15 +123,15 @@ class ViewController: UIViewController {
 
     // MARK: - @IBActions
 
-    @IBAction func changeFlashMode(_ sender: UIButton)
-    {
-        switch (cameraManager.changeFlashMode()) {
+    @IBAction func changeFlashMode(_ sender: UIButton) {
+        
+        switch cameraManager.changeFlashMode() {
         case .off:
-            sender.setTitle("Flash Off", for: UIControlState())
+            flashModeImageView.image = UIImage(named: "flash_off")
         case .on:
-            sender.setTitle("Flash On", for: UIControlState())
+            flashModeImageView.image = UIImage(named: "flash_on")
         case .auto:
-            sender.setTitle("Flash Auto", for: UIControlState())
+            flashModeImageView.image = UIImage(named: "flash_auto")
         }
     }
     
@@ -109,14 +148,16 @@ class ViewController: UIViewController {
                     if let validVC: ImageViewController = vc,
                         let capturedImage = image {
                             validVC.image = capturedImage
+                            validVC.cameraManager = self.cameraManager
                             self.navigationController?.pushViewController(validVC, animated: true)
                     }
                 }
             })
         case .videoWithMic, .videoOnly:
-            sender.isSelected = !sender.isSelected
-            sender.setTitle(" ", for: UIControlState.selected)
-            sender.backgroundColor = sender.isSelected ? UIColor.red : UIColor.green
+            cameraButton.isSelected = !cameraButton.isSelected
+            cameraButton.setTitle("", for: UIControlState.selected)
+    
+            cameraButton.backgroundColor = cameraButton.isSelected ? redColor : lightBlue
             if sender.isSelected {
                 cameraManager.startRecordingVideo()
             } else {
@@ -129,40 +170,35 @@ class ViewController: UIViewController {
         }
     }
     
+
+    
+    @IBAction func locateMeButtonTapped(_ sender: Any) {
+        cameraManager.shouldUseLocationServices = true
+        locationButton.isHidden = true
+    }
+
     @IBAction func outputModeButtonTapped(_ sender: UIButton) {
         
         cameraManager.cameraOutputMode = cameraManager.cameraOutputMode == CameraOutputMode.videoWithMic ? CameraOutputMode.stillImage : CameraOutputMode.videoWithMic
-        switch (cameraManager.cameraOutputMode) {
+        
+        switch cameraManager.cameraOutputMode {
         case .stillImage, .stillImageWithFaceDetection:
             cameraButton.isSelected = false
-            cameraButton.backgroundColor = UIColor.green
-            sender.setTitle("Image", for: UIControlState())
+            cameraButton.backgroundColor = lightBlue
+            outputImageView.image = UIImage(named: "output_image")
         case .videoWithMic, .videoOnly:
-            sender.setTitle("Video", for: UIControlState())
+            outputImageView.image = UIImage(named: "output_video")
         }
     }
     
-    @IBAction func locateMeButtonTapped(_ sender: Any) {
-        self.cameraManager.shouldUseLocationServices = true
-    }
-    
-    @IBAction func changeCameraDevice(_ sender: UIButton) {
-        
+    @IBAction func changeCameraDevice() {
         cameraManager.cameraDevice = cameraManager.cameraDevice == CameraDevice.front ? CameraDevice.back : CameraDevice.front
-        switch (cameraManager.cameraDevice) {
-        case .front:
-            sender.setTitle("Front", for: UIControlState())
-        case .back:
-            sender.setTitle("Back", for: UIControlState())
-        }
     }
     
-    @IBAction func askForCameraPermissions(_ sender: UIButton) {
+    @IBAction func askForCameraPermissions() {
         
-        cameraManager.askUserForCameraPermission({ permissionGranted in
-            self.askForPermissionsButton.isHidden = true
+        self.cameraManager.askUserForCameraPermission({ permissionGranted in
             self.askForPermissionsLabel.isHidden = true
-            self.askForPermissionsButton.alpha = 0
             self.askForPermissionsLabel.alpha = 0
             if permissionGranted {
                 self.addCameraToView()
@@ -170,15 +206,15 @@ class ViewController: UIViewController {
         })
     }
     
-    @IBAction func changeCameraQuality(_ sender: UIButton) {
+    @IBAction func changeCameraQuality() {
         
-        switch (cameraManager.changeQualityMode()) {
+        switch cameraManager.changeQualityMode() {
         case .high:
-            sender.setTitle("High", for: UIControlState())
+            qualityLabel.text = "High"
         case .low:
-            sender.setTitle("Low", for: UIControlState())
+            qualityLabel.text = "Low"
         case .medium:
-            sender.setTitle("Medium", for: UIControlState())
+            qualityLabel.text = "Medium"
         }
     }
 }
