@@ -1662,7 +1662,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     }
     
     fileprivate func _updateIlluminationMode(_ mode: CameraFlashMode) {
-        if (cameraOutputMode != .stillImage) {
+        if (cameraOutputMode != .stillImage && cameraOutputMode != .stillImageWithFaceDetection) {
             _updateTorch(mode)
         } else {
             _updateFlash(mode)
@@ -1744,7 +1744,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             case CameraOutputQuality.medium:
                 sessionPreset = AVCaptureSession.Preset.medium
             case CameraOutputQuality.high:
-                if cameraOutputMode == .stillImage {
+                if cameraOutputMode == .stillImage || cameraOutputMode == .stillImageWithFaceDetection {
                     sessionPreset = AVCaptureSession.Preset.photo
                 } else {
                     sessionPreset = AVCaptureSession.Preset.high
