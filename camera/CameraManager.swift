@@ -299,7 +299,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     @discardableResult open func addPreviewLayerToView(_ view: UIView) -> CameraState {
         return addPreviewLayerToView(view, newCameraOutputMode: cameraOutputMode)
     }
-  
+    
     @discardableResult open func addPreviewLayerToView(_ view: UIView, newCameraOutputMode: CameraOutputMode) -> CameraState {
         return addLayerPreviewToView(view, newCameraOutputMode: newCameraOutputMode, completion: nil)
     }
@@ -329,10 +329,10 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         }
         return _checkIfCameraIsAvailable()
     }
-
+    
     /**
      Zoom in to the requested scale.
-    */
+     */
     open func zoom(_ scale: CGFloat) {
         _zoom(scale)
     }
@@ -446,7 +446,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             
             let filePath = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tempImg\(Int(Date().timeIntervalSince1970)).jpg")
             let newImageData = _imageDataWithEXIF(forImage: image, imageData) as Data
-                
+            
             do {
                 
                 try newImageData.write(to: filePath)
@@ -461,7 +461,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 } else {
                     self._saveImageToLibrary(atFileURL: filePath, imageCompletion)
                 }
-
+                
             } catch {
                 imageCompletion(nil, NSError())
                 return
@@ -486,7 +486,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         let newImageData:CFMutableData = CFDataCreateMutable(nil, 0)
         let type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, "image/jpg" as CFString, kUTTypeImage)
         let destination:CGImageDestination = CGImageDestinationCreateWithData(newImageData, (type?.takeRetainedValue())!, 1, nil)!
-    
+        
         let imageSourceRef = CGImageSourceCreateWithData(imageData as CFData, nil)
         let currentProperties = CGImageSourceCopyPropertiesAtIndex(imageSourceRef!, 0, nil)
         let mutableDict = NSMutableDictionary(dictionary: currentProperties!)
@@ -494,10 +494,10 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         if let location = self.locationManager?.latestLocation {
             mutableDict.setValue(_gpsMetadata(withLocation: location), forKey: kCGImagePropertyGPSDictionary as String)
         }
-    
+        
         CGImageDestinationAddImage(destination, cgImage!, mutableDict as CFDictionary)
         CGImageDestinationFinalize(destination)
-    
+        
         return newImageData
     }
     
@@ -507,10 +507,10 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         
         f.dateFormat = "yyyy:MM:dd"
         let isoDate = f.string(from: location.timestamp)
-
+        
         f.dateFormat = "HH:mm:ss.SSSSSS"
         let isoTime = f.string(from: location.timestamp)
-    
+        
         let GPSMetadata = NSMutableDictionary()
         let altitudeRef = Int(location.altitude < 0.0 ? 1 : 0)
         let latitudeRef = location.coordinate.latitude < 0.0 ? "S" : "N"
@@ -533,7 +533,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         
         let location = self.locationManager?.latestLocation
         let date = Date()
-
+        
         library!.save(imageAtURL: filePath, albumName: self.imageAlbumName, date: date, location: location)
     }
     
@@ -586,20 +586,6 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 imageCompletion(nil, NSError())
             }
         })
-    }
-
-    fileprivate func _imageOrientation(forDeviceOrientation deviceOrientation: UIDeviceOrientation, isMirrored: Bool) -> UIImageOrientation {
-        
-        switch deviceOrientation {
-        case .landscapeLeft:
-            return isMirrored ? .upMirrored : .up
-        case .landscapeRight:
-            return isMirrored ? .downMirrored : .down
-        default:
-            break
-        }
-
-        return isMirrored ? .leftMirrored : .right
     }
     
     /**
@@ -660,8 +646,8 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     open func stopVideoRecording(_ completion:((_ videoURL: URL?, _ error: NSError?) -> Void)?) {
         if let runningMovieOutput = movieOutput,
             runningMovieOutput.isRecording {
-                videoCompletion = completion
-                runningMovieOutput.stopRecording()
+            videoCompletion = completion
+            runningMovieOutput.stopRecording()
         }
     }
     
@@ -756,7 +742,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         library?.save(videoAtURL: fileURL, albumName: self.videoAlbumName, date: date, location: location, completion: { _ in
             self._executeVideoCompletionWithURL(fileURL, error: nil)
         })
-
+        
     }
     
     // MARK: - UIGestureRecognizerDelegate
@@ -865,35 +851,35 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             let validPreviewLayer = previewLayer,
             let view = recognizer.view
         {
-                let pointInPreviewLayer = view.layer.convert(recognizer.location(in: view), to: validPreviewLayer)
-                let pointOfInterest = validPreviewLayer.captureDevicePointConverted(fromLayerPoint: pointInPreviewLayer)
+            let pointInPreviewLayer = view.layer.convert(recognizer.location(in: view), to: validPreviewLayer)
+            let pointOfInterest = validPreviewLayer.captureDevicePointConverted(fromLayerPoint: pointInPreviewLayer)
+            
+            do {
+                try validDevice.lockForConfiguration()
                 
-                do {
-                    try validDevice.lockForConfiguration()
-                    
-                    _showFocusRectangleAtPoint(pointInPreviewLayer, inLayer: validPreviewLayer)
-                    
-                    if validDevice.isFocusPointOfInterestSupported {
-                        validDevice.focusPointOfInterest = pointOfInterest
-                    }
-                    
-                    if  validDevice.isExposurePointOfInterestSupported {
-                        validDevice.exposurePointOfInterest = pointOfInterest
-                    }
-                    
-                    if validDevice.isFocusModeSupported(focusMode) {
-                        validDevice.focusMode = focusMode
-                    }
-                    
-                    if validDevice.isExposureModeSupported(exposureMode) {
-                        validDevice.exposureMode = exposureMode
-                    }
-                    
-                    validDevice.unlockForConfiguration()
+                _showFocusRectangleAtPoint(pointInPreviewLayer, inLayer: validPreviewLayer)
+                
+                if validDevice.isFocusPointOfInterestSupported {
+                    validDevice.focusPointOfInterest = pointOfInterest
                 }
-                catch let error {
-                    print(error)
+                
+                if  validDevice.isExposurePointOfInterestSupported {
+                    validDevice.exposurePointOfInterest = pointOfInterest
                 }
+                
+                if validDevice.isFocusModeSupported(focusMode) {
+                    validDevice.focusMode = focusMode
+                }
+                
+                if validDevice.isExposureModeSupported(exposureMode) {
+                    validDevice.exposureMode = exposureMode
+                }
+                
+                validDevice.unlockForConfiguration()
+            }
+            catch let error {
+                print(error)
+            }
         }
     }
     
@@ -1071,7 +1057,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             }
         }
     }
-
+    
     
     // MARK: - CameraManager()
     
@@ -1095,7 +1081,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 }
             }
         }
-
+        
         return movieOutput!
     }
     
@@ -1108,19 +1094,21 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         stillImageOutput = newStillImageOutput
         if let captureSession = captureSession,
             captureSession.canAddOutput(newStillImageOutput) {
-                captureSession.beginConfiguration()
-                captureSession.addOutput(newStillImageOutput)
-                captureSession.commitConfiguration()
+            captureSession.beginConfiguration()
+            captureSession.addOutput(newStillImageOutput)
+            captureSession.commitConfiguration()
         }
         return newStillImageOutput
     }
     
     @objc fileprivate func _orientationChanged() {
         var currentConnection: AVCaptureConnection?
-
+        
         switch cameraOutputMode {
-        case .stillImage, .stillImageWithFaceDetection:
+        case .stillImage:
             currentConnection = stillImageOutput?.connection(with: AVMediaType.video)
+        case .stillImageWithFaceDetection:
+            currentConnection = stillImageWithFaceDetectionOutput?.connection(with: AVMediaType.video)
         case .videoOnly, .videoWithMic:
             currentConnection = _getMovieOutput().connection(with: AVMediaType.video)
             if let location = self.locationManager?.latestLocation {
@@ -1132,7 +1120,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             if !shouldKeepViewAtOrientationChanges {
                 if let validPreviewLayerConnection = validPreviewLayer.connection,
                     validPreviewLayerConnection.isVideoOrientationSupported {
-                        validPreviewLayerConnection.videoOrientation = _currentPreviewVideoOrientation()
+                    validPreviewLayerConnection.videoOrientation = _currentPreviewVideoOrientation()
                 }
             }
             if let validOutputLayerConnection = currentConnection,
@@ -1155,7 +1143,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         if deviceOrientation == .faceDown
             || deviceOrientation == .faceUp
             || deviceOrientation == .unknown {
-             return _currentPreviewVideoOrientation()
+            return _currentPreviewVideoOrientation()
         }
         
         return _videoOrientation(forDeviceOrientation: deviceOrientation)
@@ -1169,7 +1157,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         
         return UIDevice.current.orientation
     }
-
+    
     
     fileprivate func _currentPreviewVideoOrientation() -> AVCaptureVideoOrientation {
         let orientation = _currentPreviewDeviceOrientation()
@@ -1182,7 +1170,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         //will then update the orientation of the preview layer.
         _orientationChanged()
     }
-
+    
     fileprivate func _videoOrientation(forDeviceOrientation deviceOrientation: UIDeviceOrientation) -> AVCaptureVideoOrientation {
         switch deviceOrientation {
         case .landscapeLeft:
@@ -1197,7 +1185,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
              getting the orientation from the stats bar would fail every other time forcing it
              to default to portrait which would introduce flicker into the preview layer.  This
              would not happen if it was in portrait then face up
-            */
+             */
             if let validPreviewLayer = previewLayer, let connection = validPreviewLayer.connection  {
                 return connection.videoOrientation //Keep the existing orientation
             }
@@ -1223,7 +1211,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     fileprivate func _videoOrientationFromStatusBarOrientation() -> AVCaptureVideoOrientation {
         
         var orientation: UIInterfaceOrientation?
-       
+        
         DispatchQueue.main.async {
             orientation = UIApplication.shared.statusBarOrientation
         }
@@ -1251,25 +1239,62 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     }
     
     fileprivate func fixOrientation(withImage image: UIImage) -> UIImage {
-        guard let cgImage = image.cgImage else { return image }
-        
-        var isMirrored = false
-        let orientation = image.imageOrientation
-        if orientation == .rightMirrored
-            || orientation == .leftMirrored
-            || orientation == .upMirrored
-            || orientation == .downMirrored {
-            
-            isMirrored = true
+        guard image.imageOrientation != UIImageOrientation.up else {
+            return image
         }
         
-        let newOrientation = _imageOrientation(forDeviceOrientation: deviceOrientation, isMirrored: isMirrored)
-        
-        if image.imageOrientation != newOrientation {
-            return UIImage(cgImage: cgImage, scale: image.scale, orientation: newOrientation)
+        guard let cgImage = image.cgImage else {
+            return image
         }
         
-        return image
+        guard let colorSpace = cgImage.colorSpace, let ctx = CGContext(data: nil, width: Int(image.size.width), height: Int(image.size.height), bitsPerComponent: cgImage.bitsPerComponent, bytesPerRow: 0, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            return image
+        }
+        
+        var transform: CGAffineTransform = CGAffineTransform.identity
+        
+        switch image.imageOrientation {
+        case .down, .downMirrored:
+            transform = transform.translatedBy(x: image.size.width, y: image.size.height)
+            transform = transform.rotated(by: CGFloat.pi)
+            break
+        case .left, .leftMirrored:
+            transform = transform.translatedBy(x: image.size.width, y: 0)
+            transform = transform.rotated(by: CGFloat.pi / 2.0)
+            break
+        case .right, .rightMirrored:
+            transform = transform.translatedBy(x: 0, y: image.size.height)
+            transform = transform.rotated(by: CGFloat.pi / -2.0)
+            break
+        case .up, .upMirrored:
+            break
+        }
+        
+        //Flip image one more time if needed to, this is to prevent flipped image
+        switch image.imageOrientation {
+        case .upMirrored, .downMirrored:
+            transform.translatedBy(x: image.size.width, y: 0)
+            transform.scaledBy(x: -1, y: 1)
+            break
+        case .leftMirrored, .rightMirrored:
+            transform.translatedBy(x: image.size.height, y: 0)
+            transform.scaledBy(x: -1, y: 1)
+        case .up, .down, .left, .right:
+            break
+        }
+        
+        ctx.concatenate(transform)
+        
+        switch image.imageOrientation {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: image.size.height, height: image.size.width))
+        default:
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height))
+            break
+        }
+        
+        guard let newCGImage = ctx.makeImage() else { return image }
+        return UIImage.init(cgImage: newCGImage, scale: 1, orientation: .up)
     }
     
     fileprivate func _canLoadCamera() -> Bool {
@@ -1404,8 +1429,12 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         if let cameraOutputToRemove = oldCameraOutputMode {
             // remove current setting
             switch cameraOutputToRemove {
-            case .stillImage, .stillImageWithFaceDetection:
+            case .stillImage:
                 if let validStillImageOutput = stillImageOutput {
+                    captureSession?.removeOutput(validStillImageOutput)
+                }
+            case .stillImageWithFaceDetection:
+                if let validStillImageOutput = stillImageWithFaceDetectionOutput {
                     captureSession?.removeOutput(validStillImageOutput)
                 }
             case .videoOnly, .videoWithMic:
@@ -1438,12 +1467,12 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             let videoMovieOutput = _getMovieOutput()
             if let captureSession = captureSession,
                 captureSession.canAddOutput(videoMovieOutput) {
-                    captureSession.addOutput(videoMovieOutput)
+                captureSession.addOutput(videoMovieOutput)
             }
             
             if newCameraOutputMode == .videoWithMic,
                 let validMic = _deviceInputFromDevice(mic) {
-                    captureSession?.addInput(validMic)
+                captureSession?.addInput(validMic)
             }
         }
         captureSession?.commitConfiguration()
@@ -1490,33 +1519,33 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         
         if let validEmbeddingView = embeddingView,
             let validPreviewLayer = previewLayer {
-                var tempView = UIView()
-                
-                if CameraManager._blurSupported() {
-                    let blurEffect = UIBlurEffect(style: .light)
-                    tempView = UIVisualEffectView(effect: blurEffect)
-                    tempView.frame = validEmbeddingView.bounds
-                } else {
-                    tempView = UIView(frame: validEmbeddingView.bounds)
-                    tempView.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-                }
-                
-                validEmbeddingView.insertSubview(tempView, at: Int(validPreviewLayer.zPosition + 1))
-                
-                cameraTransitionView = validEmbeddingView.snapshotView(afterScreenUpdates: true)
-                
-                if let cameraTransitionView = cameraTransitionView {
-                    validEmbeddingView.insertSubview(cameraTransitionView, at: Int(validEmbeddingView.layer.zPosition + 1))
-                }
-                tempView.removeFromSuperview()
-                
-                transitionAnimating = true
-                
-                validPreviewLayer.opacity = 0.0
-                
-                DispatchQueue.main.async {
-                    self._flipCameraTransitionView()
-                }
+            var tempView = UIView()
+            
+            if CameraManager._blurSupported() {
+                let blurEffect = UIBlurEffect(style: .light)
+                tempView = UIVisualEffectView(effect: blurEffect)
+                tempView.frame = validEmbeddingView.bounds
+            } else {
+                tempView = UIView(frame: validEmbeddingView.bounds)
+                tempView.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+            }
+            
+            validEmbeddingView.insertSubview(tempView, at: Int(validPreviewLayer.zPosition + 1))
+            
+            cameraTransitionView = validEmbeddingView.snapshotView(afterScreenUpdates: true)
+            
+            if let cameraTransitionView = cameraTransitionView {
+                validEmbeddingView.insertSubview(cameraTransitionView, at: Int(validEmbeddingView.layer.zPosition + 1))
+            }
+            tempView.removeFromSuperview()
+            
+            transitionAnimating = true
+            
+            validPreviewLayer.opacity = 0.0
+            
+            DispatchQueue.main.async {
+                self._flipCameraTransitionView()
+            }
         }
     }
     
@@ -1649,13 +1678,13 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 if hasFrontCamera {
                     if let validFrontDevice = _deviceInputFromDevice(frontCameraDevice),
                         !inputs.contains(validFrontDevice) {
-                            validCaptureSession.addInput(validFrontDevice)
+                        validCaptureSession.addInput(validFrontDevice)
                     }
                 }
             case .back:
                 if let validBackDevice = _deviceInputFromDevice(backCameraDevice),
                     !inputs.contains(validBackDevice) {
-                        validCaptureSession.addInput(validBackDevice)
+                    validCaptureSession.addInput(validBackDevice)
                 }
             }
         }
@@ -1768,8 +1797,8 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         for input in inputs {
             if let deviceInput = input as? AVCaptureDeviceInput,
                 deviceInput.device == mic {
-                    captureSession?.removeInput(deviceInput)
-                    break
+                captureSession?.removeInput(deviceInput)
+                break
             }
         }
     }
@@ -1791,7 +1820,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             return nil
         }
     }
-
+    
     deinit {
         _stopFollowingDeviceOrientation()
         stopAndRemoveCaptureSession()
@@ -1837,7 +1866,7 @@ extension PHPhotoLibrary {
                     self.saveImage(imageAtURL: imageAtURL, album: album, date: date, location: location, completion: completion)
                 }
             } else {
-                 self.saveImage(imageAtURL: imageAtURL, album: nil, date: date, location: location, completion: completion)
+                self.saveImage(imageAtURL: imageAtURL, album: nil, date: date, location: location, completion: completion)
             }
             
         }
@@ -1876,7 +1905,7 @@ extension PHPhotoLibrary {
         }
     }
     
-
+    
     // MARK: - Private
     
     fileprivate func findAlbum(name: String) -> PHAssetCollection? {
@@ -1913,7 +1942,7 @@ extension PHPhotoLibrary {
                 placeholder = photoPlaceholder
                 let fastEnumeration = NSArray(array: [photoPlaceholder] as [PHObjectPlaceholder])
                 albumChangeRequest.addAssets(fastEnumeration)
-
+                
             }
             
         }, completionHandler: { success, error in
@@ -1927,7 +1956,7 @@ extension PHPhotoLibrary {
             }
         })
     }
-
+    
     fileprivate func saveVideo(videoAtURL: URL, album: PHAssetCollection?, date: Date = Date(), location: CLLocation? = nil, completion:((PHAsset?) -> ())? = nil) {
         var placeholder: PHObjectPlaceholder?
         self.performChanges({
